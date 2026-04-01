@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# FlipClock ASCII Screensaver - Multi-monitor launcher
+# Spawns a fullscreen terminal on each monitor running the clock.
+
+# Check dependencies
+for cmd in hyprctl jq; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd is required but not found" >&2
+        exit 1
+    fi
+done
+
+# State directory (overridable for testing)
+STATE_DIR="${FLIPCLOCK_STATE_DIR:-$HOME/.local/state/flipclock}"
+
+# Exit if already running (REQ-010)
+if pgrep -f "flipclock-screensaver-cmd" &>/dev/null; then
+    exit 0
+fi
+
+# Toggle on/off (REQ-009)
+if [[ -f "$STATE_DIR/screensaver-off" ]] && [[ "${1:-}" != "force" ]]; then
+    exit 0
+fi
+
+# Detect terminal via xdg-terminal-exec (REQ-005)
+if command -v xdg-terminal-exec &>/dev/null; then
+    TERMINAL=$(xdg-terminal-exec --print-id 2>/dev/null || echo "")
+else
+    TERMINAL=""
+fi
+
+if [[ -z "$TERMINAL" ]]; then
+    notify-send "FlipClock Screensaver" "No supported terminal found" 2>/dev/null || true
+    echo "Error: no supported terminal found" >&2
+    exit 1
+fi
+
+# Save focused monitor to restore later (REQ-014)
+FOCUSED=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true).name')
+
+# Launch a terminal on each monitor
+for monitor in $(hyprctl monitors -j | jq -r '.[].name'); do
+    hyprctl dispatch focusmonitor "$monitor"
+
+    case "$TERMINAL" in
+        *alacritty*|*Alacritty*)
+            hyprctl dispatch exec -- \
+                alacritty --class=com.flipclock.screensaver \
+                -e flipclock-screensaver-cmd
+            ;;
+        *ghostty*)
+            hyprctl dispatch exec -- \
+                ghostty --class=com.flipclock.screensaver \
+                --font-size=18 \
+                -e flipclock-screensaver-cmd
+            ;;
+        *kitty*)
+            hyprctl dispatch exec -- \
+                kitty --class=com.flipclock.screensaver \
+                --override font_size=22 \
+                --override window_padding_width=0 \
+                -e flipclock-screensaver-cmd
+            ;;
+        *)
+            notify-send "FlipClock" "Unsupported terminal: $TERMINAL" 2>/dev/null || true
+            ;;
+    esac
+done
+
+# Restore focus to original monitor (REQ-014)
+if [[ -n "${FOCUSED:-}" ]]; then
+    hyprctl dispatch focusmonitor "$FOCUSED"
+fi
