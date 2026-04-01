@@ -2,14 +2,7 @@
 
 Terminal-based ASCII flip clock screensaver for Hyprland/Wayland. Renders `HH:MM` in large ASCII art with TTE (Terminal Text Effects) transitions on minute changes. Multi-monitor support.
 
-```
- ██████╗  █████╗    ██████╗  ██████╗
-██╔═████╗██╔══██╗██╗╚════██╗██╔═████╗
-██║██╔██║╚█████╔╝╚═╝ █████╔╝██║██╔██║
-████╔╝██║██╔══██╗██╗ ╚═══██╗████╔╝██║
-╚██████╔╝╚█████╔╝╚═╝██████╔╝╚██████╔╝
- ╚═════╝  ╚════╝    ╚═════╝  ╚═════╝
-```
+![FlipClock ASCII Screensaver](screenshot.png)
 
 ## Dependencies
 
@@ -65,12 +58,8 @@ listener {
 Add to `~/.config/hypr/hyprland.conf` (or copy from `hyprland.conf`):
 
 ```
-windowrulev2 = fullscreen, class:^(com.flipclock.screensaver)$
-windowrulev2 = noanim, class:^(com.flipclock.screensaver)$
-windowrulev2 = noborder, class:^(com.flipclock.screensaver)$
-windowrulev2 = noblur, class:^(com.flipclock.screensaver)$
-windowrulev2 = noshadow, class:^(com.flipclock.screensaver)$
-windowrulev2 = nodim, class:^(com.flipclock.screensaver)$
+windowrule = fullscreen on, match:class com.flipclock.screensaver
+windowrule = float on, match:class com.flipclock.screensaver
 ```
 
 ## Toggle On/Off
