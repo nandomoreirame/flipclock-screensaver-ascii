@@ -18,7 +18,15 @@ true
 EOF
     chmod +x "$BATS_TEST_TMPDIR/bin/hyprctl" "$BATS_TEST_TMPDIR/bin/pkill"
 
+    # Also need jq mock for screensaver_in_focus
+    cat > "$BATS_TEST_TMPDIR/bin/jq" << 'EOF'
+#!/bin/bash
+true
+EOF
+    chmod +x "$BATS_TEST_TMPDIR/bin/jq"
+
     PATH="$BATS_TEST_TMPDIR/bin" run "$BASH_BIN" -c "
+        CHILD_PID=''
         source '$SCRIPT' --source-only 2>/dev/null || true
         type exit_screensaver &>/dev/null && echo 'function_exists'
     "

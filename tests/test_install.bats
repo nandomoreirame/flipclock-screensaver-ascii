@@ -11,7 +11,7 @@ setup() {
 # Helper: link core utils needed by install.sh
 link_coreutils() {
     local dir="$1"
-    for util in bash env dirname mkdir cp chmod rm echo; do
+    for util in bash env dirname mkdir cp chmod rm echo cat grep sed cut; do
         local path
         path="$(which "$util" 2>/dev/null || true)"
         if [[ -n "$path" ]]; then
@@ -33,7 +33,7 @@ link_coreutils() {
 @test "installs scripts to bin dir" {
     mkdir -p "$BATS_TEST_TMPDIR/mock_bin"
     link_coreutils "$BATS_TEST_TMPDIR/mock_bin"
-    for cmd in python3 jq hyprctl pip; do
+    for cmd in python3 pip; do
         cat > "$BATS_TEST_TMPDIR/mock_bin/$cmd" << 'EOF'
 #!/bin/bash
 true
@@ -41,8 +41,27 @@ EOF
         chmod +x "$BATS_TEST_TMPDIR/mock_bin/$cmd"
     done
 
+    # Mock hyprctl with version support
+    cat > "$BATS_TEST_TMPDIR/mock_bin/hyprctl" << 'EOF'
+#!/bin/bash
+case "$1" in
+    version) echo '{"version":"0.54.0"}' ;;
+    *) true ;;
+esac
+EOF
+    chmod +x "$BATS_TEST_TMPDIR/mock_bin/hyprctl"
+
+    # Mock jq
+    JQ_BIN="$(which jq)"
+    ln -sf "$JQ_BIN" "$BATS_TEST_TMPDIR/mock_bin/jq"
+
+    # Create a temp hyprland.conf to avoid modifying the real one
+    HYPR_TMP="$BATS_TEST_TMPDIR/hyprland.conf"
+    echo "# test config" > "$HYPR_TMP"
+
     PATH="$BATS_TEST_TMPDIR/mock_bin" \
         FLIPCLOCK_BIN_DIR="$INSTALL_DIR" \
+        HYPR_CONF="$HYPR_TMP" \
         run "$BASH_BIN" "$SCRIPT"
 
     [ "$status" -eq 0 ]
