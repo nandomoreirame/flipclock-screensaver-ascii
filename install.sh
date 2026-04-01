@@ -13,7 +13,16 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     rm -f "$BIN_DIR/flipclock-ascii"
     rm -f "$BIN_DIR/flipclock-screensaver"
     rm -f "$BIN_DIR/flipclock-screensaver-cmd"
+    rm -f "$BIN_DIR/flipclock_ascii.py"
     rm -f "$STATE_DIR/screensaver-off"
+
+    # Remove Hyprland window rules
+    HYPR_CONF="${HYPR_CONF:-$HOME/.config/hypr/hyprland.conf}"
+    if [[ -f "$HYPR_CONF" ]] && grep -q "com.flipclock.screensaver" "$HYPR_CONF" 2>/dev/null; then
+        sed -i '/# FlipClock screensaver/d;/com\.flipclock\.screensaver/d' "$HYPR_CONF"
+        info "Window rules removed from $HYPR_CONF"
+    fi
+
     ok "Uninstalled"
     exit 0
 fi
@@ -40,6 +49,42 @@ done
 
 # Copy Python module alongside the executable
 cp "$SCRIPT_DIR/flipclock_ascii.py" "$BIN_DIR/flipclock_ascii.py"
+
+# Install Hyprland window rules (idempotent, version-aware)
+HYPR_CONF="${HYPR_CONF:-$HOME/.config/hypr/hyprland.conf}"
+if [[ -f "$HYPR_CONF" ]]; then
+    if ! grep -q "com.flipclock.screensaver" "$HYPR_CONF" 2>/dev/null; then
+        # Detect Hyprland version to pick correct syntax
+        # >= 0.45: new syntax (windowrule = ... match:class ...)
+        # <  0.45: legacy syntax (windowrulev2 = ..., class:^(...)$)
+        HYPR_VER=$(hyprctl version -j 2>/dev/null | jq -r '.version // "0.0.0"')
+        HYPR_MAJOR=$(echo "$HYPR_VER" | cut -d. -f1)
+        HYPR_MINOR=$(echo "$HYPR_VER" | cut -d. -f2)
+
+        info "Hyprland $HYPR_VER detected, adding window rules..."
+
+        if [[ "$HYPR_MAJOR" -gt 0 ]] || [[ "$HYPR_MINOR" -ge 45 ]]; then
+            cat >> "$HYPR_CONF" << 'RULES'
+
+# FlipClock screensaver
+windowrule = fullscreen on, match:class com.flipclock.screensaver
+windowrule = float on, match:class com.flipclock.screensaver
+RULES
+        else
+            cat >> "$HYPR_CONF" << 'RULES'
+
+# FlipClock screensaver
+windowrulev2 = fullscreen, class:^(com.flipclock.screensaver)$
+windowrulev2 = float, class:^(com.flipclock.screensaver)$
+RULES
+        fi
+        ok "Window rules added to $HYPR_CONF"
+    else
+        info "Window rules already present in $HYPR_CONF"
+    fi
+else
+    info "Hyprland config not found at $HYPR_CONF, skipping window rules"
+fi
 
 ok "Installed to $BIN_DIR"
 echo ""
