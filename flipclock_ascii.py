@@ -9,9 +9,14 @@ import threading
 import time
 from datetime import datetime
 
-import pyfiglet
+try:
+    import pyfiglet
+except ImportError:
+    sys.stderr.write("Error: pyfiglet is required. Install with: pip install pyfiglet\n")
+    sys.exit(1)
 
 FONT = "ansi_shadow"
+_figlet = pyfiglet.Figlet(font=FONT)
 COLOR_DIGIT = "\033[1;37m"  # Bold white
 COLOR_RESET = "\033[0m"
 CLEAR = "\033[2J\033[H"  # Clear screen + home
@@ -31,8 +36,7 @@ def parse_args(argv=None):
 
 def render_frame(time_str):
     """Render a time string as ASCII art lines using pyfiglet."""
-    fig = pyfiglet.Figlet(font=FONT)
-    art = fig.renderText(time_str)
+    art = _figlet.renderText(time_str)
     return art.rstrip("\n").split("\n")
 
 
