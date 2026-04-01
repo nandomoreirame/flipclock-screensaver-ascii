@@ -42,7 +42,7 @@ fi
 FOCUSED=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true).name')
 
 # Launch a terminal on each monitor
-for monitor in $(hyprctl monitors -j | jq -r '.[].name'); do
+hyprctl monitors -j | jq -r '.[].name' | while IFS= read -r monitor; do
     hyprctl dispatch focusmonitor "$monitor"
 
     case "$TERMINAL" in

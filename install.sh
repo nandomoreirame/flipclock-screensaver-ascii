@@ -37,7 +37,11 @@ done
 
 # Install Python deps
 info "Installing Python dependencies..."
-pip install --user --quiet pyfiglet terminaltexteffects 2>/dev/null || true
+if ! pip install --user --quiet pyfiglet 2>/dev/null; then
+    error "Failed to install pyfiglet (required dependency)"
+    exit 1
+fi
+pip install --user --quiet terminaltexteffects 2>/dev/null || info "TTE not installed (optional, effects disabled)"
 
 # Install scripts
 mkdir -p "$BIN_DIR"

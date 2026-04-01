@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
 # FlipClock ASCII Screensaver - Content runner
 # Runs inside the terminal spawned by flipclock-screensaver.
 # Renders clock with TTE effects on minute change, exits on input or focus loss.
 
-# Allow sourcing for testing
-if [[ "${1:-}" == "--source-only" ]]; then
-    exit_screensaver() {
-        hyprctl keyword cursor:invisible false &>/dev/null || true
-        pkill -x flipclock-ascii 2>/dev/null
-        pkill -x tte 2>/dev/null
-        pkill -f "com.flipclock.screensaver" 2>/dev/null
-        exit 0
-    }
-    return 0 2>/dev/null || exit 0
-fi
+CHILD_PID=""
 
 screensaver_in_focus() {
     hyprctl activewindow -j | jq -e '.class == "com.flipclock.screensaver"' >/dev/null 2>&1
@@ -22,11 +13,16 @@ screensaver_in_focus() {
 
 exit_screensaver() {
     hyprctl keyword cursor:invisible false &>/dev/null || true
-    pkill -x flipclock-ascii 2>/dev/null
+    [[ -n "$CHILD_PID" ]] && kill "$CHILD_PID" 2>/dev/null
     pkill -x tte 2>/dev/null
-    pkill -f "com.flipclock.screensaver" 2>/dev/null
+    pkill -x flipclock-ascii 2>/dev/null
     exit 0
 }
+
+# Allow sourcing for testing
+if [[ "${1:-}" == "--source-only" ]]; then
+    return 0 2>/dev/null || exit 0
+fi
 
 trap exit_screensaver SIGINT SIGTERM SIGHUP SIGQUIT
 
@@ -40,14 +36,16 @@ if command -v tte &>/dev/null; then
 fi
 
 last_hm=""
-tty_dev=$(tty 2>/dev/null)
 
 while true; do
     current_hm=$(date +%H:%M)
 
     if [[ "$current_hm" != "$last_hm" ]]; then
+        # Kill previous child if still running
+        [[ -n "$CHILD_PID" ]] && kill "$CHILD_PID" 2>/dev/null
+        CHILD_PID=""
+
         if [[ "$HAS_TTE" == true ]]; then
-            # Kill any running TTE first
             pkill -x tte 2>/dev/null
             sleep 0.1
 
@@ -60,9 +58,11 @@ while true; do
                 --random-effect \
                 --exclude-effects dev_worm \
                 --no-eol --no-restore-cursor &
+            CHILD_PID=$!
         else
             # No TTE: render directly (REQ-007)
             flipclock-ascii &
+            CHILD_PID=$!
         fi
         last_hm="$current_hm"
     fi
